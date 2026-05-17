@@ -1,0 +1,29 @@
+{% extends 'dashboard/teacher_dashboard.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Add Student | EduTrack{% endblock %}
+
+{% block dashboard_content %}
+<div class="pt-3 pb-2 mb-3 border-bottom border-secondary">
+    <h1 class="h2">Add New Student</h1>
+</div>
+
+<div class="card p-4 col-lg-8 border-secondary bg-dark text-white shadow-sm">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row gx-3 gy-3">
+            <div class="col-md-6">{{ form.first_name|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.last_name|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.email|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.phone|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.username|as_crispy_field }}</div>
+            <div class="col-md-6">{{ form.password|as_crispy_field }}</div>
+            <div class="col-12">{{ form.class_ref|as_crispy_field }}</div>
+            <div class="col-12">{{ form.profile_picture|as_crispy_field }}</div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary px-4">Save Student</button>
+            <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-secondary px-4 ms-2">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

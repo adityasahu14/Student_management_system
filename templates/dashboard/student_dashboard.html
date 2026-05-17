@@ -1,0 +1,186 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Student Dashboard | EduTrack{% endblock %}
+
+{% block sidebar_nav %}
+<li class="nav-item">
+    <a class="nav-link active" href="{% url 'student_dashboard' %}">
+        <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" href="{% url 'notice_list' %}">
+        <i class="bi bi-megaphone"></i> Notices
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" href="{% url 'download_report' %}">
+        <i class="bi bi-file-earmark-pdf"></i> Download Report
+    </a>
+</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+    <h1 class="h2">Student Dashboard</h1>
+    
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <form method="get" class="d-flex align-items-center flex-wrap shadow-sm p-2 rounded bg-dark border border-secondary">
+            <div class="input-group input-group-sm me-2 mb-2 mb-sm-0" style="width: auto;">
+                <span class="input-group-text bg-secondary text-white border-secondary border-end-0"><i class="bi bi-calendar-event"></i></span>
+                <input type="date" class="form-control bg-dark text-white border-secondary" name="start_date" value="{{ start_date|default:'' }}" title="Start Date">
+            </div>
+            <span class="text-muted mx-1 mb-2 mb-sm-0 px-1"><i class="bi bi-arrow-right"></i></span>
+            <div class="input-group input-group-sm ms-2 me-3 mb-2 mb-sm-0" style="width: auto;">
+                <input type="date" class="form-control bg-dark text-white border-secondary" name="end_date" value="{{ end_date|default:'' }}" title="End Date">
+                <span class="input-group-text bg-secondary text-white border-secondary border-start-0"><i class="bi bi-calendar-event"></i></span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-info text-dark fw-bold px-3 shadow-sm"><i class="bi bi-funnel-fill"></i> Filter</button>
+                {% if start_date or end_date %}
+                <a href="{% url 'student_dashboard' %}" class="btn btn-sm btn-outline-danger shadow-sm" title="Clear Filters"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if show_warning %}
+<div class="alert alert-danger" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i> Warning! Your cumulative attendance is below the {{ threshold }}% threshold.
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <!-- Doughnut Chart for Cumulative Attendance -->
+    <div class="col-md-4 mb-4 mb-md-0">
+        <div class="card h-100">
+            <div class="card-header bg-transparent border-bottom border-secondary">
+                <h5 class="mb-0">Cumulative Attendance</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center position-relative">
+                <canvas id="cumulativeChart" height="200" width="200"></canvas>
+                <div class="position-absolute fs-3 fw-bold">{{ cumulative }}%</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Subject Wise Cards -->
+    <div class="col-md-8">
+        <h5 class="mb-3">Subject Wise Attendance</h5>
+        <div class="row g-3">
+            {% for stat in subject_stats %}
+            <div class="col-md-6">
+                <div class="card border-{{ stat.color }} border-start border-4">
+                    <div class="card-body">
+                        <h6 class="text-muted text-uppercase mb-2">{{ stat.subject.name }}</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">{{ stat.percent }}%</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-secondary">No subjects found for your class.</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Submit Query Card -->
+    <div class="col-md-5 mb-4 mb-md-0">
+        <div class="card h-100 border-secondary bg-dark shadow-sm">
+            <div class="card-header border-secondary bg-transparent">
+                <h5 class="mb-0 text-white"><i class="bi bi-question-circle text-info"></i> Ask a Teacher</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'student_query_submit' %}">
+                    {% csrf_token %}
+                    {{ query_form|crispy }}
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-info fw-bold text-dark">Send Question <i class="bi bi-send ms-1"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- My Queries List -->
+    <div class="col-md-7 mb-4">
+        <div class="card h-100 border-secondary bg-dark shadow-sm">
+            <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="bi bi-chat-left-dots text-primary"></i> My Questions</h5>
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <ul class="list-group list-group-flush border-secondary">
+                    {% for q in my_queries %}
+                    <li class="list-group-item bg-transparent text-white border-secondary py-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-0 fw-bold">To: {{ q.teacher.get_full_name }}</h6>
+                                <small class="text-info">{{ q.subject.name|default:"General Query" }} &bull; {{ q.created_at|date:"M d, Y g:i A" }}</small>
+                            </div>
+                            {% if q.status == 'answered' %}
+                            <span class="badge bg-success rounded-pill px-3 py-2">Answered</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Pending</span>
+                            {% endif %}
+                        </div>
+                        <p class="mb-2 pe-3 text-light opacity-75 fs-6"><i>"{{ q.question }}"</i></p>
+                        {% if q.answer %}
+                        <div class="p-3 rounded border border-secondary mt-3" style="background-color: rgba(16, 185, 129, 0.1);">
+                            <h6 class="text-success mb-1 text-uppercase" style="font-size: 0.75rem;"><i class="bi bi-reply-fill"></i> Teacher's Reply:</h6>
+                            <p class="mb-0 small text-light">{{ q.answer }}</p>
+                            <div class="text-end pt-2">
+                                <small class="text-muted"><i class="bi bi-clock-history"></i> {{ q.updated_at|date:"M d, Y g:i A" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item bg-transparent text-muted py-5 text-center border-0 border-secondary">
+                        <i class="bi bi-chat-square text-secondary fs-1 d-block mb-3"></i>
+                        You haven't asked any questions yet!
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('cumulativeChart').getContext('2d');
+    const cumulative = parseFloat("{{ cumulative|default:0 }}");
+    const remainder = Math.max(0, 100 - cumulative);
+    const color = cumulative >= 75 ? '#10B981' : (cumulative >= 65 ? '#F59E0B' : '#EF4444');
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Present', 'Absent'],
+            datasets: [{
+                data: [cumulative, remainder],
+                backgroundColor: [color, 'rgba(255, 255, 255, 0.1)'],
+                borderWidth: 0,
+                cutout: '80%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        }
+    });
+</script>
+{% endblock %}

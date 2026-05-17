@@ -1,0 +1,80 @@
+{% extends 'dashboard/teacher_dashboard.html' %}
+
+{% block title %}Student Queries | EduTrack{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+    <h1 class="h2"><i class="bi bi-chat-left-dots"></i> Student Queries</h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary shadow-sm">
+            <div class="card-header bg-transparent border-secondary border-bottom">
+                <h5 class="mb-0 text-white">Inbox</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion accordion-flush" id="queriesAccordion">
+                    {% for q in queries %}
+                    <div class="accordion-item bg-transparent border-bottom border-secondary">
+                        <h2 class="accordion-header" id="heading{{ q.id }}">
+                            <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ q.id }}" aria-expanded="false" aria-controls="collapse{{ q.id }}">
+                                <div class="d-flex justify-content-between w-100 align-items-center pe-3">
+                                    <div class="d-flex align-items-center">
+                                        {% if q.status == 'answered' %}
+                                        <i class="bi bi-check-circle-fill text-success fs-5 me-3"></i>
+                                        {% else %}
+                                        <i class="bi bi-exclamation-circle-fill text-warning fs-5 me-3"></i>
+                                        {% endif %}
+                                        
+                                        <div>
+                                            <strong>{{ q.student.get_full_name }}</strong> 
+                                            <span class="text-muted ms-2 fs-6">{{ q.subject.name|default:"General Query" }}</span>
+                                        </div>
+                                    </div>
+                                    <span>{{ q.created_at|date:"M d, g:i A" }}</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ q.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ q.id }}" data-bs-parent="#queriesAccordion">
+                            <div class="accordion-body text-light">
+                                <div class="p-4 bg-secondary bg-opacity-10 rounded mb-4">
+                                    <h6 class="text-info mb-2"><i class="bi bi-question-circle"></i> Question:</h6>
+                                    <p class="mb-0 fs-5">"{{ q.question }}"</p>
+                                </div>
+                                
+                                {% if q.status == 'answered' %}
+                                    <div class="p-4 rounded border border-success ps-4 mb-3" style="background-color: rgba(16, 185, 129, 0.05);">
+                                        <h6 class="text-success mb-2"><i class="bi bi-reply-fill"></i> Your Reply:</h6>
+                                        <p class="mb-0">{{ q.answer }}</p>
+                                        <div class="text-end mt-2"><small class="text-muted">{{ q.updated_at|date:"M d, Y g:i A" }}</small></div>
+                                    </div>
+                                {% else %}
+                                    <form method="post" action="{% url 'teacher_queries' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="query_id" value="{{ q.id }}">
+                                        <div class="mb-3">
+                                            <label for="answer{{ q.id }}" class="form-label text-success"><i class="bi bi-reply"></i> Write Your Answer:</label>
+                                            <textarea class="form-control bg-dark border-secondary text-white" id="answer{{ q.id }}" name="answer" rows="3" required placeholder="Type your response..."></textarea>
+                                        </div>
+                                        <div class="d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Send Reply</button>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                        <h5>No student queries found.</h5>
+                        <p>When a student asks you a question, it will appear here.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
